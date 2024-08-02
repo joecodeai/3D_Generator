@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Sketch Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        h1 {
+            margin-top: 20px;
+            color: #444;
+        }
+
+        .file-input-container {
+            display: flex;
+            align-items: center;
+            margin: 20px;
+        }
+
+        #upload {
+            padding: 10px;
+            border: 2px dashed #aaa;
+            border-radius: 10px;
+            background-color: #fff;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #output {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .image-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px;
+        }
+
+        .image-box {
+            margin: 10px;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            padding: 10px;
+            background-color: #fff;
+        }
+
+        .image-box img {
+            max-width: 300px;
+            max-height: 300px;
+            display: block;
+        }
+
+        #point-cloud {
+            width: 800px;
+            height: 600px;
+            margin-top: 20px;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            background-color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <h1>3D Sketch Generator</h1>
+    <div class="file-input-container">
+        <input type="file" id="upload" accept="image/*">
+        <button onclick="uploadFile()">Generate 3D</button>
+    </div>
+    <div id="output">
+        <div class="image-container">
+            <div class="image-box">
+                <img id="depth" alt="Depth Map" />
+            </div>
+            <div class="image-box">
+                <img id="rgb" alt="RGB Image" />
+            </div>
+        </div>
+        <div id="point-cloud"></div>
+    </div>
+
+    <script>
+        async function uploadFile() {
+            const fileInput = document.getElementById('upload');
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/generate', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            document.getElementById('depth').src = result.depth_image;
+            document.getElementById('rgb').src = result.rgb_image;
+            displayPointCloud(result.points, result.colors);
+        }
+
+        function displayPointCloud(points, colors) {
+            const container = document.getElementById('point-cloud');
+            container.innerHTML = '';  // Clear previous content
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, container.offsetWidth / container.offsetHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer();
+            renderer.setSize(container.offsetWidth, container.offsetHeight);
+            container.appendChild(renderer.domElement);
+
+            const geometry = new THREE.BufferGeometry();
+            const vertices = new Float32Array(points.flat());
+            const pointColors = new Float32Array(colors.flat());
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(pointColors, 3));
+            const material = new THREE.PointsMaterial({ vertexColors: true, size: 0.05 });
+            const pointCloud = new THREE.Points(geometry, material);
+
+            scene.add(pointCloud);
+            camera.position.z = 2;
+
+            const animate = function () {
+                requestAnimationFrame(animate);
+                pointCloud.rotation.y += 0.01;
+                renderer.render(scene, camera);
+            };
+
+            animate();
+        }
+    </script>
+</body>
+</html>

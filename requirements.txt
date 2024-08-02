@@ -1,0 +1,8 @@
+open3d
+tabulate
+pillow
+matplotlib
+opencv-python
+flask
+torch
+numpy
